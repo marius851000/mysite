@@ -1,0 +1,45 @@
+@font-face {
+    font-family: "Oswald Medium";
+    src: url("./Oswald-Medium.ttf");
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background-color: rgb(255, 199, 96);
+}
+
+header {
+    display: flex;
+    background-color: rgb(109, 74, 0);
+}
+
+header a {
+    color: rgb(255, 255, 255);
+    margin-left: 1em;
+    text-decoration: underline;
+}
+
+main {
+    max-width: 70em;
+    margin: 0 auto;
+    padding-left: 1em;
+    padding-right: 1em;
+    background-color: rgb(255, 235, 200);
+}
+
+footer {
+    background-color: rgb(109, 74, 0);
+    color: white;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+footer a {
+    color: rgb(199, 255, 250);
+}
+
+h1 {
+    text-align: center;
+}
