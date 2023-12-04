@@ -43,3 +43,8 @@ footer a {
 h1 {
     text-align: center;
 }
+
+code .multiline {
+    display: block;
+    white-space: pre-wrap   
+}
