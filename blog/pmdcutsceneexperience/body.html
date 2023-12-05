@@ -258,6 +258,26 @@ end
 
 <p>You can only call a single function inside <code>with</code> blocks, which limit heavily their use (and make more complex threading more appealling). Being able to queue multiple functions inside a with block (potentially with loops and conditional), and making its blocking optional, either adding to the function queue or interrupting all previously running function, should allow to get rid of the majority of the other type of threading. It’s the approach Super Mystery Dungeon (and likely Gates to Infinity and Rescue Team DX) took. It uses inline Lua function definition.</p>
 
+<h2>Planning</h2>
+
+<p>Some more information that is specific to the method I use to make them, not necessarelly technical. I’m interested in input regarding them (or anything written in this article, actually).</p>
+
+<p>The way I usually work on an hack is (The two first stage are usually not done by me):</p>
+
+<ol>
+    <li>Write an outline of the story. It contain the various important element of the story, without necessarelly even mentionning every scenes that’ll appear. It’s good to have names and species of important characters at that point.</li>
+    <li>Write a script. It’s like a play. It will describe what characters will say, and how they act (movement, emotion, etc) in every cutscenes.</li>
+    <li>Implement the cutscenes:
+        <ol>
+            <li>Make sure to read the script and have a good idea of what happens. At this times, I also often think of things that might make the cutscenes better even if it isn’t present or even contradict with the script.</li>
+            <li>Make the background and import it (if not reusing an existing ones. It might also be someone else who does this).</li>
+            <li>Create the actors</li>
+            <li>Make the definitions. Depending on which method is used, there might be multiple ones, but I usually only start with the first.</li>
+            <li>Code the cutscenes. I usually make use of multi-threading, locks and gates quite a lot, but that depend on how complex the scene is. If that’s possible, I’ll usually prefer using <code>with</code>. I also sometimes takes some liberty about the script here if I think it’ll result in something better, but I don’t stray too far from it.</li>
+        </ol>
+    </li>
+</ol>
+
 <h2>Conclusion</h2>
 
 <p>I hope this will be usefull. If you have question, feel free to contact me. And if you work on a libre game, I may even be interested in contributing.</p>
