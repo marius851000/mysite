@@ -48,3 +48,11 @@ code .multiline {
     display: block;
     white-space: pre-wrap   
 }
+
+blockquote {
+    border-left-style: solid;
+    border-left-color: darkgray;
+    padding-left: 1em;
+    margin-left: 0;
+    border-left-width: .2em;
+}
