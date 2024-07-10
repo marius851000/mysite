@@ -28,6 +28,8 @@ let
   buildBlogPage = blogTitle: folder: path: rec {
     data = builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
 
+    date = data.date or "1970-01-01";
+
     page = pkgs.stdenv.mkDerivation {
       name = "site-blog-page";
 
@@ -38,8 +40,9 @@ let
         ln -s ${folder}/* $out
         rm $out/body.html
         rm $out/meta.toml
-        ln -s ${buildPage data.title "${folder}/body.html" path} $out/index.html
+        cp ${buildPage data.title "${folder}/body.html" path} $out/index.html
       '';
+      # It’s here that a good layout lack is evident
     };
   };
 
@@ -47,7 +50,7 @@ let
     let
       instructionsList = pkgs.lib.mapAttrsToList
       (key: content: ''
-        echo "<li><a href=\"${path}/${key}\">${content.data.title}</a></li>" >> $out
+        echo "<li><a href=\"${path}/${key}\">${content.date}: ${content.data.title}</a></li>" >> $out
       '') blogPosts;
 
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
