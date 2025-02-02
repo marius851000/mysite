@@ -31,6 +31,7 @@ let
     data = builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
 
     date = data.date or "1970-01-01";
+    lang = data.lang;
 
     page = pkgs.stdenv.mkDerivation {
       name = "site-blog-page";
@@ -54,7 +55,7 @@ let
 
       instructionsList = pkgs.lib.map
       (content: ''
-        echo "<li><a href=\"${path}/${content.key}\">${content.date}: ${content.data.title}</a></li>" >> $out
+        echo "<li><a href=\"${path}/${content.key}\">${content.date} ${content.lang}: ${content.data.title}</a></li>" >> $out
       '') sortedBlogPosts;
 
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
