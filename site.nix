@@ -25,7 +25,9 @@ let
     postname = ".html";
   };
 
-  buildBlogPage = blogTitle: folder: path: rec {
+  buildBlogPage = blogTitle: folder: path: key: rec {
+    inherit key;
+
     data = builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
 
     date = data.date or "1970-01-01";
@@ -48,10 +50,12 @@ let
 
   buildBlogIndex = blogTitle: blogPosts: path:
     let
-      instructionsList = pkgs.lib.mapAttrsToList
-      (key: content: ''
-        echo "<li><a href=\"${path}/${key}\">${content.date}: ${content.data.title}</a></li>" >> $out
-      '') blogPosts;
+      sortedBlogPosts = pkgs.lib.reverseList (pkgs.lib.sortOn (b: b.date) (pkgs.lib.mapAttrsToList (key: content: content) blogPosts));
+
+      instructionsList = pkgs.lib.map
+      (content: ''
+        echo "<li><a href=\"${path}/${content.key}\">${content.date}: ${content.data.title}</a></li>" >> $out
+      '') sortedBlogPosts;
 
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
     in
@@ -63,7 +67,7 @@ let
       installPhase = ''
         cp ${header} $out
         substituteInPlace $out \
-          --replace "{{title}}" "${blogTitle}"
+          --replace-warn "{{title}}" "${blogTitle}"
         echo "<ul>" >> $out
         ${instructions}
         echo "</ul>" >> $out
@@ -75,7 +79,7 @@ let
     subfolder = builtins.readDir folder;
 
     #Don't know why I need to first compute ("/" + something). Probably a type thing, where folder isn't a string.
-    data = pkgs.lib.mapAttrs (key: type: buildBlogPage title (folder + ("/" +  key)) (path + "/" + key)) subfolder;
+    data = pkgs.lib.mapAttrs (key: type: buildBlogPage title (folder + ("/" +  key)) (path + "/" + key) key) subfolder;
 
     instructionsList = pkgs.lib.mapAttrsToList
       (key: content: "ln -s ${content.page} $out/${key}") data;
