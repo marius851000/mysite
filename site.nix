@@ -2,26 +2,44 @@
 
 { pkgs ? import <nixpkgs> {}}:
 
+with pkgs.lib.strings;
+
 let
   footer = ./footer.html;
   header = ./header.html;
 
   # with the title, the body and the path of the page, return a derivation containing the page
-  buildPage = title: body: path: pkgs.stdenv.mkDerivation {
+  buildPage = title: body: path: folder: let
+    placeholder_file_path = folder + "/placeholder.nix";
+    placeholder_exist = builtins.pathExists placeholder_file_path;
+    placeholder_value = if (folder != null && placeholder_exist) then (
+      import placeholder_file_path { inherit pkgs; }
+    ) else [];
+    placeholder_replace_command = builtins.concatStringsSep "\n" (builtins.map
+      (x:
+        ''substituteInPlace body.html --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} "${escapeShellArg x.to}"''
+      )
+      placeholder_value);
+  in pkgs.stdenv.mkDerivation {
     name = "site-page";
 
     phases = "installPhase";
 
     installPhase = ''
+      echo managing ${escapeShellArg title}
       cp ${header} $out
       substituteInPlace $out \
-        --replace "{{title}}" "${title}"
-      cat ${body} >> $out
+        --replace-quiet {{title}} ${escapeShellArg title}
+      cp ${body} body.html
+      echo "running placehold substitution"
+      ${placeholder_replace_command}
+      echo "doing the rest"
+      cat body.html >> $out
       cat ${footer} >> $out
       substituteInPlace $out \
-        --replace "<img src=\"./" "<img src=\"${path}/"
+        --replace-quiet "<img src=\"./" "<img src=\"${path}/"
     '';
-    
+
     postname = ".html";
   };
 
@@ -43,7 +61,7 @@ let
         ln -s ${folder}/* $out
         rm $out/body.html
         rm $out/meta.toml
-        cp ${buildPage data.title "${folder}/body.html" path} $out/index.html
+        cp ${buildPage data.title "${folder}/body.html" path folder} $out/index.html
       '';
       # It’s here that a good layout lack is evident
     };
@@ -84,7 +102,7 @@ let
 
     instructionsList = pkgs.lib.mapAttrsToList
       (key: content: "ln -s ${content.page} $out/${key}") data;
-    
+
     instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
   in
     pkgs.stdenv.mkDerivation {
@@ -104,7 +122,7 @@ let
     };
 
   #path should not end with a slash
-  buildSectionFromStructure = structure: path: 
+  buildSectionFromStructure = structure: path:
     let
       instructionsList = (pkgs.lib.mapAttrsToList
         (key: content: if (pkgs.lib.isFunction content) then
@@ -120,14 +138,14 @@ let
         else
           "ln -s ${(buildSectionFromStructure content (path + "/" + key))} $out/${key}"
         ))
-        
+
         structure;
-      
+
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
     in
       pkgs.stdenv.mkDerivation {
         name = "site-a-structure";
-        
+
         phases = "installPhase";
 
         installPhase = ''
@@ -135,7 +153,7 @@ let
           ${instructions}
         '';
       };
-      
+
 
   structure = import ./structure.nix { inherit buildPage buildBlog; };
 in
