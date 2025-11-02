@@ -17,7 +17,7 @@ let
     ) else [];
     placeholder_replace_command = builtins.concatStringsSep "\n" (builtins.map
       (x:
-        ''substituteInPlace body.html --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} "${escapeShellArg x.to}"''
+        ''substituteInPlace body.html --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} ${escapeShellArg x.to}''
       )
       placeholder_value);
   in pkgs.stdenv.mkDerivation {
