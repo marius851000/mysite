@@ -1,0 +1,68 @@
+<p>Today, I finished the 2026 video game about climbing CAIRN.</p>
+
+<p>There is a pretty nasty thing about that game: While you can, at all time, load any previous save, this isn’t possible once you finish the game (under certain condition).</p>
+
+<p>Given I did wanted to do some stuff after that (and I couldn’t find a save online. So <a href="./SLOT_B.CPK">here is a save</a> at the nearest it is possible to the end of the game), I decided to figure how to edit the save to convince to game to still load it.</p>
+
+<p>Note: the save files are located at <code>C:\users\USERNAME\Saved Games\TheGameBakers\Cairn_RETAIL\SAVEGAMES\RETAIL\STORY</code>, under <code>~/.local/share/Steam/steamapps/compatdata/1588550/pfx/drive_c</code> on Linux. They are named <code>SLOT_X.CPK</code>, with X being an alphabet number, starting from A. Corrupted saves are not displayed in the menu.</p>
+
+<p>In addition, it is usefull to say the game save a lot of log in <code>AppData/LocalLow/TheGameBakers/Cairn/</code>. Included a backtrace of when loading a save failed (and so not displayed in the menu).</p>
+
+<p>Also, contain fun stuff such as <code>[21:18:31][Log] #Savegame# According to SocialManager, player is not Deluxe. If you read this log message with the intention of finding the deluxe code to hack it, best of luck & happy pirating :)</code>, which almost looks like a challenge.</p>
+
+<p>So, saves. I haven’t looked further than what was needed to restore a save into a workable save. This require two things:</p>
+
+<ol>
+    <li>Removing the "game finished" mark</li>
+    <li>Removing the last autosave</li>
+</ol>
+
+<h2>The save format</h2>
+
+<p>Given that giving a textual description is probably not very appropriate, here is a imhex script instead:</p>
+
+<pre>
+<code class=".multiline">
+struct Header {
+    u8 magic[8];
+    u8 unknown[8];
+};
+
+struct FileMeta {
+    u32 position;
+    u32 size;
+    u8 unk1[4];
+    u32 unk2; // timestamp?
+    u8 unk4[5];
+    char name[139];
+    if (position != 0xFFFFFFFF) {
+        char content[size] @ position;
+    }
+};
+
+struct CEPECK {
+    Header header;
+    FileMeta files[0x800];
+};
+
+CEPECK content @ 0;
+</code>
+</pre>
+
+<p>The CPK file is a sort of archive which can store up to 0x800 files. The file info (the <code>FileMeta</code> struct) start at <code>0x16</code>. The list has a static size, empty entry have a position of <code>0xFFFFFFFF</code>. All position are relative to the start of the file.</p>
+
+<h2>Editing the save</h2>
+
+<p>Step 1: removing the "game finished" flag: You will need to locate the <code>RUNINFOS/RUN.BIN</code> file content (follow the position), and modify the byte at <code>position + 0x1E</code> to be <code>0x00</code> instead of <code>0x01</code>. (If you ask, I figured that out by just replacing this section by the content of a new file. Finding the exact byte was... Guesswork that was valid on the first try).</p>
+
+<p>Step 2: removing the last autosave: I don’t know what this autosave correspond to, but when you load it, you fall into the void, for some reason. For this, you will need to load the save in the game (and quit). You will see, in the <code>TGBTools.Savegame.log</code> log file, something akin to <code>[21:18:37][Log] [DISK] #Savegame# Read 40535 bytes as savegame AUTO_INPACK_2026.03.22_17.26.44</code>. Once that is done, locate the entry in the <code>.CPK</code> file, and just make it unloadable by changing the file. On my side, I haven’t digged deeper than changing the extension to <code>.SAVE</code> and changing a few characters to E in the file name.</p>
+
+<p>With all that done, your once unloadable file will now be loadable. And will bring you to the pre-final autosave. You have a cutscene, but you can just skip it and bring the path history mode to load any previous save.</p>
+
+<h2>Some more observation</h2>
+
+<p>There is also a curious <code>META</code> file, with the <code>SAVEPAK</code> magic. I have no idea what it does, but even changing a nibble in it make the save unloadable, same as copying this content from one save to another. On the other hand, it isn’t a checksum of the files, otherwise the previous changes wouldn’t work. Truly a mystery. I don’t really care about.</p>
+
+<p>Also, this game doesn’t appear to have backtracking in mind. That was why I wanted to restore my game. But even the option the game offer you for that doesn’t let you play it. Thought, to be honest, I do find it is not very fun. Not because the descent phase, but due to horizontal walking. Doesn’t help that I back-tracked from about the latest possible point, which for some spoilery reason, make you permanently (even) slower.</p>
+
+<p>And... That is all. Hope that is usefull for someone willing to do some more digging. On my side, I’ll probably not touch that game again for some time. Still, 20€ well spent.</p>
