@@ -97,8 +97,16 @@ let
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;
 
-    #Don't know why I need to first compute ("/" + something). Probably a type thing, where folder isn't a string.
-    data = pkgs.lib.mapAttrs (key: type: buildBlogPage title (folder + ("/" +  key)) (path + "/" + key) key) subfolder;
+    data = pkgs.lib.mapAttrs (key: type: buildBlogPage
+      title
+      (builtins.path {
+        path = folder + ("/" + key);
+        # avoid problem with name containing invalid characters
+        name = "blog-entry-source";
+      })
+      (path + ("/" +  key))
+      key
+    ) subfolder;
 
     instructionsList = pkgs.lib.mapAttrsToList
       (key: content: "ln -s ${content.page} $out/${key}") data;
