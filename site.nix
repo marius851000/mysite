@@ -9,7 +9,8 @@ let
   header = ./header.html;
 
   # with the title, the body and the path of the page, return a derivation containing the page
-  buildPage = title: body: path: folder: let
+  # path is the path relative to the site root, folder is the folder containing the page, used for substitution. May be null.
+  buildPage = title: extra_meta: body: path: folder: let
     placeholder_file_path = folder + "/placeholder.nix";
     placeholder_exist = builtins.pathExists placeholder_file_path;
     placeholder_value = if (folder != null && placeholder_exist) then (
@@ -20,6 +21,13 @@ let
         ''substituteInPlace body.html --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} ${escapeShellArg x.to}''
       )
       placeholder_value);
+
+    modified_date = if extra_meta ? "modified-date" then extra_meta."modified-date" else if extra_meta ? "date" then extra_meta."date" else null;
+
+    extra_header = "<meta property=\"og:title\" content=\"${title}\" />" +
+      (if extra_meta ? type then "\n<meta property=\"og:type\" content=\"${extra_meta.type}\" />" else "") +
+      (if extra_meta ? date then "\n<meta property=\"article:published_time\" content=\"${extra_meta.date}T00:00:00+00:00\" />" else "") +
+      (if modified_date != null then "\n<meta property=\"article:modified_time\" content=\"${modified_date}T00:00:00+00:00\" />" else "");
   in pkgs.stdenv.mkDerivation {
     name = "site-page";
 
@@ -29,7 +37,8 @@ let
       echo managing ${escapeShellArg title}
       cp ${header} $out
       substituteInPlace $out \
-        --replace-quiet {{title}} ${escapeShellArg title}
+        --replace-quiet {{title}} ${escapeShellArg title} \
+        --replace-quiet {{extra_header}} ${escapeShellArg extra_header}
       cp ${body} body.html
       echo "running placehold substitution"
       ${placeholder_replace_command}
@@ -46,7 +55,9 @@ let
   buildBlogPage = blogTitle: folder: path: key: rec {
     inherit key;
 
-    data = builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
+    data = {
+      type = "article";
+    } // builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
 
     date = data.date or "1970-01-01";
     lang = data.lang;
@@ -61,7 +72,7 @@ let
         ln -s ${folder}/* $out
         rm $out/body.html
         rm $out/meta.toml
-        cp ${buildPage data.title "${folder}/body.html" path folder} $out/index.html
+        cp ${buildPage data.title data "${folder}/body.html" path folder} $out/index.html
       '';
       # It’s here that a good layout lack is evident
     };
@@ -77,22 +88,20 @@ let
       '') sortedBlogPosts;
 
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
+
+      body = pkgs.stdenvNoCC.mkDerivation {
+        name = "site-blog-index-body";
+
+        phases = "installPhase";
+
+        installPhase = ''
+          echo "<ul>" > $out
+          ${instructions}
+          echo "</ul>" >> $out
+        '';
+      };
     in
-    pkgs.stdenv.mkDerivation {
-      name = "site-blog-index";
-
-      phases = "installPhase";
-
-      installPhase = ''
-        cp ${header} $out
-        substituteInPlace $out \
-          --replace-warn "{{title}}" "${blogTitle}"
-        echo "<ul>" >> $out
-        ${instructions}
-        echo "</ul>" >> $out
-        cat ${footer} >> $out
-      '';
-    };
+      buildPage blogTitle {} body path null;
 
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;
