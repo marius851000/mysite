@@ -6,7 +6,7 @@
 
 <p>So, I decided to, instead of decompiling the lua files and looking at their code (that also apply to the non-compiled lua files), to look at this SecretRoom.lua. I already had some experience in the subject: good reverse engineering skill (this is what the game is about, more than programming) from my work on various video game, mostly Pokémon Mystery Dungeon: Explorers of Sky (it have a really good hacking community with SkyTemple btw), analyzing lua file with my work on adding (and analyzing) cutscenes in Pokémon Super Mystery Dungeon and encrypted file hacking from Fragment 3 (one of those Explorers of Sky hack) by Irdkwia. (It was a Vigenere cypher, but I figured that and the key with static executable analysis — figuring where the code was was rather simple, as it was at the start of the memory space unused by the game, where custom code tend to be)</p>
 
-<p></p>So I opened the file in an HEX editor, and starting taking a quick look at it, mostly by assuming the file start with \x1bLua, and looking at the difference (if this where a Vigenere encoding — and that the file actually started with \x1bLua — is would likely have given some meaningfull ASCII text instead of some random bytes) with no sucess.</p>
+<p>So I opened the file in an HEX editor, and starting taking a quick look at it, mostly by assuming the file start with \x1bLua, and looking at the difference (if this where a Vigenere encoding — and that the file actually started with \x1bLua — is would likely have given some meaningfull ASCII text instead of some random bytes) with no sucess.</p>
 
 <p>So I decompiled the lua files using the really good unluac tool, with a bit of recursion and a Python script (I already did something similar on Super Mystery Dungeon, but I have no idea where I put it. You can find the script <a href="./decomp.py">here</a>. Will need some adaptation to work for you thought).</p>
 
@@ -30,7 +30,7 @@
 
 <p>So, I started formalizing some algo to iterate over every byte sequence present in files that I already imagined a long time ago, without remembering why, and never using it.</p>
 
-<p></p>It’s simple (in pseudocode):</p>
+<p>It’s simple (in pseudocode):</p>
 <code>
 for every number (named X) between 1 and the maximum key length:<br/>
 ____allocate Y to a buffer of size X<br/>
