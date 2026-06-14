@@ -7,7 +7,7 @@ with pkgs.lib.strings;
 let
   util = import ./util.nix { pkgs = pkgs; };
 
-  siteroot = "https://mariusdavid.fr/";
+  siteroot = "https://mariusdavid.fr";
 
   urlFromPath = path: "${siteroot}${path}";
 
@@ -95,7 +95,7 @@ let
 
       for file in header.html footer.html; do
         substituteInPlace $file \
-          --replace-quiet {{url}} ${escapeShellArg (urlFromPath path)} \
+          --replace-quiet {{page_url}} ${escapeShellArg (urlFromPath path)} \
           --replace-quiet {{title}} ${escapeShellArg extra_meta.title} \
           --replace-quiet {{post_title_stuff}} ${escapeShellArg post_title_stuff}
       done
