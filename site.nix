@@ -35,19 +35,23 @@ let
 
     phases = "installPhase";
 
+    nativeBuildInputs = [ pkgs.prettier ];
+
     installPhase = ''
-      cp ${./header.html} $out
-      substituteInPlace $out \
+      cp ${./header.html} result.html
+      substituteInPlace result.html \
         --replace-quiet {{extra_header}} ${escapeShellArg extra_header} \
         --replace-quiet {{lang}} ${escapeShellArg lang} \
         --replace-quiet {{title}} ${escapeShellArg title}
 
-      cat ${body} >> $out
+      cat ${body} >> result.html
 
-      cat ${./footer.html} >> $out
+      cat ${./footer.html} >> result.html
 
-      substituteInPlace $out \
+      substituteInPlace result.html \
         --replace-quiet "<img src=\"./" "<img src=\"${path}/"
+
+      prettier --parser html result.html > $out
     '';
 
     postname = ".html";
