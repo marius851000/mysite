@@ -10,7 +10,9 @@ let
 
   # with the title, the body and the path of the page, return a derivation containing the page
   # path is the path relative to the site root, folder is the folder containing the page, used for substitution. May be null.
-  buildPage = title: extra_meta: body: path: folder: let
+  buildPage = extra_meta: body: path: folder: let
+    title = if extra_meta ? title then extra_meta.title else throw "article without title: ${path}";
+
     placeholder_file_path = folder + "/placeholder.nix";
     placeholder_exist = builtins.pathExists placeholder_file_path;
     placeholder_value = if (folder != null && placeholder_exist) then (
@@ -45,7 +47,7 @@ let
         --replace-quiet {{extra_header}} ${escapeShellArg extra_header} \
         --replace-quiet {{lang}} ${escapeShellArg lang}
       cp ${body} body.html
-      echo "running placehold substitution"
+      echo "running placeholder substitution"
       ${placeholder_replace_command}
       echo "doing the rest"
       cat body.html >> $out
@@ -75,9 +77,10 @@ let
       installPhase = ''
         mkdir -p $out
         ln -s ${folder}/* $out
-        rm $out/body.html
-        rm $out/meta.toml
-        cp ${buildPage data.title data "${folder}/body.html" path folder} $out/index.html
+        rm -f $out/body.html
+        rm -f $out/meta.toml
+        rm -f $out/index.html
+        ln -s ${buildPage data "${folder}/body.html" path folder} $out/index.html
       '';
       # It’s here that a good layout lack is evident
     };
@@ -106,7 +109,9 @@ let
         '';
       };
     in
-      buildPage blogTitle {} body path null;
+      buildPage {
+        title = blogTitle;
+      } body path null;
 
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;

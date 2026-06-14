@@ -1,7 +1,11 @@
 { buildPage, buildBlog }:
 
 {
-  index = buildPage "Le site de marius" {} ./index.html "/" null;
+  index = buildPage {
+    title = "Le site de marius";
+    lang = "fr";
+    description = "Site personnel de Marius";
+  } ./index.html "/" null;
 
   "style.css" = ./style.css;
 
