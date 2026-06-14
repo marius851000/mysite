@@ -1,3 +1,4 @@
 title = "Some small note about CAIRN file format"
 lang = "en"
 date = "2026-02-22"
+description = "Research of the reverse‑engineering the save format of the game CAIRN, including making a completed save playable again."
