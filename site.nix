@@ -5,24 +5,14 @@
 with pkgs.lib.strings;
 
 let
-  footer = ./footer.html;
-  header = ./header.html;
-
   # with the title, the body and the path of the page, return a derivation containing the page
   # path is the path relative to the site root, folder is the folder containing the page, used for substitution. May be null.
   buildPage = extra_meta: body: path: folder: let
-    title = if extra_meta ? title then extra_meta.title else throw "article without title: ${path}";
+    wrapped_main = wrapMain extra_meta body path;
+  in wrapped_main;
 
-    placeholder_file_path = folder + "/placeholder.nix";
-    placeholder_exist = builtins.pathExists placeholder_file_path;
-    placeholder_value = if (folder != null && placeholder_exist) then (
-      import placeholder_file_path { inherit pkgs; }
-    ) else [];
-    placeholder_replace_command = builtins.concatStringsSep "\n" (builtins.map
-      (x:
-        ''substituteInPlace body.html --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} ${escapeShellArg x.to}''
-      )
-      placeholder_value);
+  wrapMain = extra_meta: body: path: let
+    title = if extra_meta ? title then extra_meta.title else throw "article without title: ${path}";
 
     modified_date = if extra_meta ? "modified-date" then extra_meta."modified-date" else if extra_meta ? "date" then extra_meta."date" else null;
 
@@ -34,24 +24,22 @@ let
       (if extra_meta ? description then "\n<meta property=\"og:description\" content=\"${extra_meta.description}\" />" else "");
 
     lang = if extra_meta ? lang then extra_meta.lang else "fr";
-  in pkgs.stdenv.mkDerivation {
-    name = "site-page";
+  in pkgs.stdenvNoCC.mkDerivation {
+    name = "header-html-wrapped";
 
     phases = "installPhase";
 
     installPhase = ''
-      echo managing ${escapeShellArg title}
-      cp ${header} $out
+      cp ${./header.html} $out
       substituteInPlace $out \
-        --replace-quiet {{title}} ${escapeShellArg title} \
         --replace-quiet {{extra_header}} ${escapeShellArg extra_header} \
-        --replace-quiet {{lang}} ${escapeShellArg lang}
-      cp ${body} body.html
-      echo "running placeholder substitution"
-      ${placeholder_replace_command}
-      echo "doing the rest"
-      cat body.html >> $out
-      cat ${footer} >> $out
+        --replace-quiet {{lang}} ${escapeShellArg lang} \
+        --replace-quiet {{title}} ${escapeShellArg title}
+
+      cat ${body} >> $out
+
+      cat ${./footer.html} >> $out
+
       substituteInPlace $out \
         --replace-quiet "<img src=\"./" "<img src=\"${path}/"
     '';
@@ -59,12 +47,51 @@ let
     postname = ".html";
   };
 
-  buildBlogPage = blogTitle: folder: path: key: rec {
-    inherit key;
+  wrapArticle = extra_meta: body: path: pkgs.stdenvNoCC.mkDerivation {
+    name = "wrapped-article";
 
+    phases = "installPhase";
+
+    installPhase = ''
+      echo "<h1>${extra_meta.title}</h1>" > $out
+      cat ${body} >> $out
+    '';
+  };
+
+  patchBody = body: path: folder: let
+    placeholder_file_path = folder + "/placeholder.nix";
+    placeholder_exist = builtins.pathExists placeholder_file_path;
+    placeholder_value = if (folder != null && placeholder_exist) then (
+      import placeholder_file_path { inherit pkgs; }
+    ) else [];
+    placeholder_replace_command = builtins.concatStringsSep "\n" (builtins.map
+      (x:
+        ''substituteInPlace $out --replace-fail ${escapeShellArg ("{{" + x.holder + "}}")} ${escapeShellArg x.to}''
+      )
+      placeholder_value);
+  in pkgs.stdenvNoCC.mkDerivation {
+      name = "patched-body";
+
+      phases = "installPhase";
+
+      installPhase = ''
+        cp ${body} $out
+        ${placeholder_replace_command}
+      '';
+    };
+
+  buildBlogPage = blogTitle: folder: path: key: let
     data = {
       type = "article";
     } // builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
+
+    body_patched = patchBody "${folder}/body.html" path folder;
+    wrapped_in_article = wrapArticle data body_patched path;
+    wrapped_in_header = wrapMain data wrapped_in_article path;
+  in {
+    inherit key data;
+
+
 
     date = data.date or "1970-01-01";
     lang = data.lang;
@@ -80,7 +107,7 @@ let
         rm -f $out/body.html
         rm -f $out/meta.toml
         rm -f $out/index.html
-        ln -s ${buildPage data "${folder}/body.html" path folder} $out/index.html
+        ln -s ${wrapped_in_header} $out/index.html
       '';
       # It’s here that a good layout lack is evident
     };
@@ -103,7 +130,9 @@ let
         phases = "installPhase";
 
         installPhase = ''
-          echo "<ul>" > $out
+          echo "<h1>${blogTitle}</h1>" > $out
+
+          echo "<ul>" >> $out
           ${instructions}
           echo "</ul>" >> $out
         '';
