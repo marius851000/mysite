@@ -5,6 +5,12 @@
 with pkgs.lib.strings;
 
 let
+  util = import ./util.nix { pkgs = pkgs; };
+
+  siteroot = "https://mariusdavid.fr/";
+
+  urlFromPath = path: "${siteroot}${path}";
+
   # with the title, the body and the path of the page, return a derivation containing the page
   # path is the path relative to the site root, folder is the folder containing the page, used for substitution. May be null.
   buildPage = extra_meta: body: path: folder: let
@@ -47,14 +53,56 @@ let
     postname = ".html";
   };
 
-  wrapArticle = extra_meta: body: path: pkgs.stdenvNoCC.mkDerivation {
+  wrapArticle = extra_meta: body: path: let
+    lang = extra_meta.lang;
+
+    publication_date_span = "<span itemprop=\"datePublished\" content=\"${extra_meta."date"}\">";
+    publication_date_text = if (extra_meta ? "date") then (
+      if lang == "en" then (
+        "Published on ${publication_date_span}${util.formatDateEnglish extra_meta.date}</span>"
+      ) else if lang == "fr" then (
+        "Publié le ${publication_date_span}${util.formatDateFrench extra_meta.date}</span>"
+      ) else throw "publication date: unknown language ${lang}"
+    ) else null;
+
+    modification_date_span = "<span itemprop=\"dateModified\" content=\"${extra_meta."date"}\">";
+    modification_date_text = if (extra_meta ? "modified-date") then (
+      if lang == "en" then (
+        "Last changed on ${modification_date_span}${util.formatDateEnglish extra_meta."modified-date"}</span>"
+      ) else if lang == "fr" then (
+        "Modifié le ${modification_date_span}${util.formatDateFrench extra_meta."modified-date"}</span>"
+      ) else throw "modification date: unknown language ${lang}"
+    ) else null;
+
+    post_title_stuff = (if (extra_meta ? "description") then (
+        "<p itemprop=\"headline\" class=\"article-headline\">${extra_meta.description}</p>\n"
+      ) else "") +
+      (if (publication_date_text != null && modification_date_text != null) then (
+        "<p class=\"article-meta\"><i>${publication_date_text} (${modification_date_text})</i></p>\n"
+      ) else if (publication_date_text != null) then (
+        "<p class=\"article-meta\"><i>${publication_date_text}</i></p>\n"
+      ) else if (modification_date_text != null) then (
+        "<p class=\"article-meta\"><i>${modification_date_text}</i></p>\n"
+      ) else "");
+  in pkgs.stdenvNoCC.mkDerivation {
     name = "wrapped-article";
 
     phases = "installPhase";
 
     installPhase = ''
-      echo "<h1>${extra_meta.title}</h1>" > $out
+      cp ${./article_header.html} ./header.html
+      cp ${./article_footer.html} ./footer.html
+
+      for file in header.html footer.html; do
+        substituteInPlace $file \
+          --replace-quiet {{url}} ${escapeShellArg (urlFromPath path)} \
+          --replace-quiet {{title}} ${escapeShellArg extra_meta.title} \
+          --replace-quiet {{post_title_stuff}} ${escapeShellArg post_title_stuff}
+      done
+
+      cp ./header.html $out
       cat ${body} >> $out
+      cat ./footer.html >> $out
     '';
   };
 
