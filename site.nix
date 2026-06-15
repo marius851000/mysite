@@ -24,8 +24,8 @@ let
 
     extra_header = "<meta property=\"og:title\" content=\"${title}\" />" +
       (if extra_meta ? type then "\n<meta property=\"og:type\" content=\"${extra_meta.type}\" />" else "") +
-      (if extra_meta ? date then "\n<meta property=\"article:published_time\" content=\"${extra_meta.date}T00:00:00+00:00\" />" else "") +
-      (if modified_date != null then "\n<meta property=\"article:modified_time\" content=\"${modified_date}T00:00:00+00:00\" />" else "") +
+      (if extra_meta ? date then "\n<meta property=\"article:published_time\" content=\"${util.dateToDefaultISO8601 extra_meta.date}\" />" else "") +
+      (if modified_date != null then "\n<meta property=\"article:modified_time\" content=\"${util.dateToDefaultISO8601 modified_date}\" />" else "") +
       (if extra_meta ? lang then "\n<meta property=\"og:locale\" content=\"${extra_meta.lang}_FR\" />" else "") +
       (if extra_meta ? description then "\n<meta property=\"og:description\" content=\"${extra_meta.description}\" />" else "");
 
@@ -60,7 +60,7 @@ let
   wrapArticle = extra_meta: body: path: let
     lang = extra_meta.lang;
 
-    publication_date_span = "<span itemprop=\"datePublished\" content=\"${extra_meta."date"}\">";
+    publication_date_span = "<span itemprop=\"datePublished\" content=\"${util.dateToDefaultISO8601 extra_meta."date"}\">";
     publication_date_text = if (extra_meta ? "date") then (
       if lang == "en" then (
         "Published on ${publication_date_span}${util.formatDateEnglish extra_meta.date}</span>"
@@ -69,7 +69,7 @@ let
       ) else throw "publication date: unknown language ${lang}"
     ) else null;
 
-    modification_date_span = "<span itemprop=\"dateModified\" content=\"${extra_meta."date"}\">";
+    modification_date_span = "<span itemprop=\"dateModified\" content=\"${util.dateToDefaultISO8601 extra_meta."date"}\">";
     modification_date_text = if (extra_meta ? "modified-date") then (
       if lang == "en" then (
         "Last changed on ${modification_date_span}${util.formatDateEnglish extra_meta."modified-date"}</span>"

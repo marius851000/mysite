@@ -28,4 +28,6 @@
 
     dayFormatted = if pkgs.lib.toIntBase10 day == 1 then "1er" else day;
   in "${dayFormatted} ${month} ${year}";
+
+  dateToDefaultISO8601 = dateStr: "${dateStr}T12:00:00+02:00";
 }
