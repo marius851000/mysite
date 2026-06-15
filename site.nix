@@ -78,7 +78,7 @@ let
       ) else throw "modification date: unknown language ${lang}"
     ) else null;
 
-    post_title_stuff = (if (extra_meta ? "description") then (
+    post_title_stuff = (if (extra_meta ? "description" && !(extra_meta ? "displayDescription" && extra_meta.displayDescription == false)) then (
         "<p itemprop=\"headline\" class=\"article-headline\">${extra_meta.description}</p>\n"
       ) else "") +
       (if (publication_date_text != null && modification_date_text != null) then (
@@ -88,6 +88,14 @@ let
       ) else if (modification_date_text != null) then (
         "<p class=\"article-meta\"><i>${modification_date_text}</i></p>\n"
       ) else "");
+
+      basic_content = if extra_meta.type == "blogPost" then {
+        "itemtype" = "https://schema.org/BlogPosting";
+        "bodyprop" = "articleBody";
+      } else if (extra_meta.type == "webPage" || extra_meta.type == "aboutPage") then {
+        "itemtype" = if extra_meta.type == "aboutPage" then "https://schema.org/AboutPage" else "https://schema.org/WebPage";
+        "bodyprop" = "mainContentOfPage";
+      } else throw "unknown type: ${extra_meta.type}";
   in pkgs.stdenvNoCC.mkDerivation {
     name = "wrapped-article";
 
@@ -101,7 +109,9 @@ let
         substituteInPlace $file \
           --replace-quiet {{page_url}} ${escapeShellArg (urlFromPath path)} \
           --replace-quiet {{title}} ${escapeShellArg extra_meta.title} \
-          --replace-quiet {{post_title_stuff}} ${escapeShellArg post_title_stuff}
+          --replace-quiet {{post_title_stuff}} ${escapeShellArg post_title_stuff} \
+          --replace-quiet {{itemtype}} ${escapeShellArg basic_content.itemtype} \
+          --replace-quiet {{bodyprop}} ${escapeShellArg basic_content.bodyprop}
       done
 
       cp ./header.html $out
@@ -132,18 +142,18 @@ let
       '';
     };
 
-  buildBlogPage = blogTitle: folder: path: key: let
+  buildArticlePage = metadata: folder: path: key: let
     data = {
-      type = "article";
-    } // builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml")));
+      type = "webPage";
+    }
+      // metadata
+      // (builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml"))));
 
     body_patched = patchBody "${folder}/body.html" path folder;
     wrapped_in_article = wrapArticle data body_patched path;
     wrapped_in_header = wrapMain data wrapped_in_article path;
   in {
     inherit key data;
-
-
 
     date = data.date or "1970-01-01";
     lang = data.lang;
@@ -161,7 +171,8 @@ let
         rm -f $out/index.html
         ln -s ${wrapped_in_header} $out/index.html
       '';
-      # It’s here that a good layout lack is evident
+
+      postname = "";
     };
   };
 
@@ -197,8 +208,8 @@ let
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;
 
-    data = pkgs.lib.mapAttrs (key: type: buildBlogPage
-      title
+    data = pkgs.lib.mapAttrs (key: type: buildArticlePage
+      { type = "blogPost"; }
       (builtins.path {
         path = folder + ("/" + key);
         # avoid problem with name containing invalid characters
@@ -233,18 +244,34 @@ let
   buildSectionFromStructure = structure: path:
     let
       instructionsList = (pkgs.lib.mapAttrsToList
-        (key: content: if (pkgs.lib.isFunction content) then
+        (key: content: let
+        info = if (pkgs.lib.isFunction content) then
           let
             pageder = content (path + "/" + key);
-            subpath = key + pageder.postname;
           in
-            "ln -s ${pageder} $out/${subpath}"
+          {
+            input = pageder;
+            output = "$out/${key + pageder.postname}";
+          }
         else if (pkgs.lib.isDerivation content) then
-          "ln -s ${content} $out/${key + content.postname}"
+          {
+            input = content;
+            output = "$out/${key + content.postname}";
+          }
         else if (builtins.isPath content) then
-          "ln -s ${content} $out/${key}"
+          {
+            input = content;
+            output = "$out/${key}";
+          }
         else
-          "ln -s ${(buildSectionFromStructure content (path + "/" + key))} $out/${key}"
+          {
+            input = (buildSectionFromStructure content (path + "/" + key));
+            output = "$out/${key}";
+          };
+      in if (key == "") then
+          "cp -r ${info.input}/* $out/"
+        else
+          "ln -s ${info.input} ${info.output}"
         ))
 
         structure;
@@ -257,12 +284,14 @@ let
         phases = "installPhase";
 
         installPhase = ''
+          set -x
           mkdir -p $out
           ${instructions}
+          set +x
         '';
       };
 
 
-  structure = import ./structure.nix { inherit buildPage buildBlog; };
+  structure = import ./structure.nix { inherit buildPage buildBlog buildArticlePage; };
 in
   buildSectionFromStructure structure ""
