@@ -73,20 +73,32 @@ rec {
     };
 
   buildGenericPage = bodyWrapper: metadata: folder: path: key: let
-    data = {
+    data_base = {
       type = "webPage";
     }
       // metadata
       // (builtins.fromTOML (builtins.readFile (builtins.toPath (folder + "/meta.toml"))));
 
+    lang = data_base.lang or null;
+
+    data = if data_base.type == "userReview" && !(data_base ? "title") then (
+      data_base // (if lang == "fr" then {
+        titleFormatted = "Critique de <span class=\"workTitle\">${data_base.reviewedName}</span>";
+        title = "Critique de ${data_base.reviewedName}";
+      } else if lang == "en" then {
+        titleFormatted = "Review of <span class=\"workTitle\">${data_base.reviewedName}</span>";
+        title = "Review of ${data_base.reviewedName}";
+      } else throw "Generate title of review: Unsupported language: ${lang}")
+    )
+    else data_base;
+
     body_patched = patchBody "${folder}/body.html" path folder;
     wrapped_in_article = bodyWrapper data body_patched path;
     wrapped_in_header = wrapMain data wrapped_in_article path;
   in {
-    inherit key data;
+    inherit key data lang;
 
     date = data.date or "1970-01-01"; #TODO: do not actually put a date
-    lang = data.lang;
 
     page = pkgs.stdenv.mkDerivation {
       name = "site-blog-page";

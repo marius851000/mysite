@@ -9,21 +9,6 @@ let
   generic_pagegen = import ./nix/generic_pagegen.nix { inherit util pkgs; };
   blog = import ./nix/blog.nix { inherit util pkgs generic_pagegen; };
 
-  buildReviews = folder: path: let
-    subfolder = builtins.readDir folder;
-  in
-    pkgs.stdenvNoCC.mkDerivation {
-      name = "site-reviews";
-      phases = "installPhase";
-      installPhase = ''
-        mkdir $out
-
-        echo "tmp" >> $out/index.html
-      '';
-
-      postname = "";
-    };
-
   #path should not end with a slash
   buildSectionFromStructure = structure: path:
     let
@@ -76,6 +61,6 @@ let
       };
 
 
-  structure = import ./structure.nix { inherit buildPage buildReviews; buildArticlePage = blog.buildArticlePage; buildBlog = blog.buildBlog; };
+  structure = import ./structure.nix { inherit buildPage; buildArticlePage = blog.buildArticlePage; buildBlog = blog.buildBlog; };
 in
   buildSectionFromStructure structure ""

@@ -1,4 +1,4 @@
-{ buildArticlePage, buildBlog, buildReviews, ... }:
+{ buildArticlePage, buildBlog, ... }:
 
 {
   "" = (buildArticlePage {} ./pages/index "/" null).page;
@@ -6,6 +6,4 @@
   "style.css" = ./style.css;
 
   blog = buildBlog "Blog de marius" ./blog;
-
-  review = buildReviews ./review;
 }
