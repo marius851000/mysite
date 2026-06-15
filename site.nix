@@ -182,7 +182,13 @@ let
 
       instructionsList = pkgs.lib.map
       (content: ''
-        echo "<li><a href=\"${path}/${content.key}\">${content.date} ${content.lang}: ${content.data.title}</a></li>" >> $out
+        echo "<li>
+          <span itemscope itemprop=\"blogPost\" itemtype=\"https://schema.org/BlogPosting\" itemid=\"${urlFromPath (path + "/" + content.key)}\">
+            <span itemprop=\"title\">
+              <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.date} ${content.lang}: ${content.data.title}</a>
+            </span>
+          </span>
+        </li>" >> $out
       '') sortedBlogPosts;
 
       instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
@@ -193,11 +199,13 @@ let
         phases = "installPhase";
 
         installPhase = ''
-          echo "<h1>${blogTitle}</h1>" > $out
+          echo "<div itemscope itemtype=\"https://schema.org/Blog\" itemid=\"${urlFromPath path}\">" >> $out
+          echo "<h1 itemprop=\"name\">${blogTitle}</h1>" >> $out
 
           echo "<ul>" >> $out
           ${instructions}
           echo "</ul>" >> $out
+          echo "</div>" >> $out
         '';
       };
     in
