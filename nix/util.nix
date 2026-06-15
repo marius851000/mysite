@@ -1,4 +1,8 @@
-{ pkgs, ... }: {
+{ pkgs, ... }: rec {
+
+  siteroot = "https://mariusdavid.fr";
+  urlFromPath = path: "${siteroot}${path}/";
+
   formatDateEnglish = dateStr: let
     parts = pkgs.lib.strings.splitString "-" dateStr;
     year = builtins.head parts;
