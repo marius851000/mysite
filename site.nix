@@ -9,7 +9,7 @@ let
 
   siteroot = "https://mariusdavid.fr";
 
-  urlFromPath = path: "${siteroot}${path}";
+  urlFromPath = path: "${siteroot}${path}/";
 
   # with the title, the body and the path of the page, return a derivation containing the page
   # path is the path relative to the site root, folder is the folder containing the page, used for substitution. May be null.
@@ -184,9 +184,7 @@ let
       (content: ''
         echo "<li>
           <span itemscope itemprop=\"blogPost\" itemtype=\"https://schema.org/BlogPosting\" itemid=\"${urlFromPath (path + "/" + content.key)}\">
-            <span itemprop=\"title\">
-              <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.date} ${content.lang}: ${content.data.title}</a>
-            </span>
+            <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.date} ${content.lang}: <span itemprop=\"headline\">${content.data.title}</span></a>
           </span>
         </li>" >> $out
       '') sortedBlogPosts;
