@@ -57,15 +57,19 @@
     };
 
     bookFormat = if isBook && (data ? "${root}BookFormat") then data."${root}BookFormat" else null;
-    bookIsFree = if isBook && (data ? "${root}IsAccessibleForFree") then data."${root}IsAccessibleForFree" else null;
+    isFree = if (data ? "${root}IsAccessibleForFree") then data."${root}IsAccessibleForFree" else null;
+    timeRequired = if (data ? "${root}TimeRequired") then data."${root}TimeRequired" else null;
     formattedTags = []
       ++ (if (bookFormat != null) then [
         "<span itemprop=\"bookFormat\" content=\"${bookFormat}\">${ebookMapping.${bookFormat}.${lang}}</span>"
       ] else [])
-      ++ (if (bookIsFree == true) then [
+      ++ (if (isFree == true) then [
         "<span itemprop=\"isAccessibleForFree\" content=\"True\">${{"fr"="gratuit"; "en"="gratis";}."${lang}"}</span>"
-      ] else if (bookIsFree == false) then [
+      ] else if (isFree == false) then [
         "<span itemprop=\"isAccessibleForFree\" content=\"False\">${{"fr"="payant"; "en"="paid";}."${lang}"}</span>"
+      ] else [])
+      ++ (if (timeRequired != null) then [
+        "<span itemprop=\"timeRequired\" content=\"${timeRequired}\">${{"fr" = "Temps de lecture : "; "en" = "Reading time: ";}."${lang}"}${formatDuration timeRequired lang}</span>"
       ] else []);
 
     mainTags = if type == "book" then
@@ -120,4 +124,35 @@
   in "${dayFormatted} ${month} ${year}";
 
   dateToDefaultISO8601 = dateStr: "${dateStr}T12:00:00+02:00";
+
+  formatDuration = duration: lang: let
+    # 1. Parse the duration
+    hms = builtins.match "T([0-9]+)H([0-9]+)M" duration;
+    h   = builtins.match "T([0-9]+)H"   duration;
+    m   = builtins.match "T([0-9]+)M"   duration;
+
+    hours = if hms != null then pkgs.lib.toIntBase10 (builtins.elemAt hms 0)
+      else if h   != null then pkgs.lib.toIntBase10 (builtins.elemAt h   0)
+      else 0;
+
+    minutes = if hms != null then pkgs.lib.toIntBase10 (builtins.elemAt hms 1)
+      else if m   != null then pkgs.lib.toIntBase10 (builtins.elemAt m   0)
+      else 0;
+
+    # 2. Make parts that will be concatenated
+    parts =
+      (pkgs.lib.optional (hours > 0)
+        (let
+          plural = if hours > 1 then "s" else "";
+          label  = { en = "hour"; fr = "heure"; }."${lang}";
+        in builtins.toString hours + " " + label + plural))
+      ++
+      (pkgs.lib.optional (minutes > 0)
+        (let
+          plural = if minutes > 1 then "s" else "";
+          label  = { en = "minute"; fr = "minute"; }."${lang}";
+        in builtins.toString minutes + " " + label + plural));
+
+    # 3. Concatenate them
+  in pkgs.lib.concatStringsSep " " parts;
 }
