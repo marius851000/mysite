@@ -52,10 +52,15 @@ let
 
         phases = "installPhase";
 
+        nativeBuildInputs = [ pkgs.python3 ];
+
         installPhase = ''
           set -x
           mkdir -p $out
           ${instructions}
+
+          python3 ${./generate_sitemap.py} $out -u https://mariusdavid.fr -o $out/sitemap.xml
+
           set +x
         '';
       };
