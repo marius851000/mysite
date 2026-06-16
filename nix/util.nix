@@ -86,7 +86,7 @@
 
   in ''
     <span ${formatItemScopeArgs mainTags.type url prop}>
-      <span class="workTitle" itemprop="name"><a href="${url}" itemprop="url">${data."${root}Name"}</a></span>
+      <cite itemprop="name"><a href="${url}" itemprop="url">${data."${root}Name"}</a></cite>
       ${{"fr" = " par "; "en" = " by ";}.${lang}}
       ${formatPersonFromData data "${root}Author" "author"}
       ${tagsTogether}

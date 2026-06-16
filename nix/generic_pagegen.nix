@@ -83,10 +83,10 @@ rec {
 
     data = if data_base.type == "userReview" && !(data_base ? "title") then (
       data_base // (if lang == "fr" then {
-        titleFormatted = "Critique de <span class=\"workTitle\">${data_base.reviewedName}</span>";
+        titleFormatted = "Critique de <cite>${data_base.reviewedName}</cite>";
         title = "Critique de ${data_base.reviewedName}";
       } else if lang == "en" then {
-        titleFormatted = "Review of <span class=\"workTitle\">${data_base.reviewedName}</span>";
+        titleFormatted = "Review of <cite>${data_base.reviewedName}</cite>";
         title = "Review of ${data_base.reviewedName}";
       } else throw "Generate title of review: Unsupported language: ${lang}")
     )

@@ -1,0 +1,15 @@
+type = "userReview"
+lang = "en"
+date = "2026-06-16"
+
+reviewedType = "book"
+
+reviewedName = "Liberté, Égalité, Fraternité"
+reviewedUrl = "https://www.fimfiction.net/story/299181/libert-galit-fraternit"
+reviewedBookFormat = "EBook"
+reviewedIsAccessibleForFree = true
+reviewedTimeRequired = "T5H53M"
+# tags?
+
+reviewedAuthorName = "Ponelover"
+reviewedAuthorUrl = "https://www.fimfiction.net/user/122186/Ponelover"
