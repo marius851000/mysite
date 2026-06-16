@@ -59,6 +59,8 @@ let
           mkdir -p $out
           ${instructions}
 
+          export SITEMAP_GIT_ROOT="$PWD"
+
           python3 ${./generate_sitemap.py} $out -u https://mariusdavid.fr -o $out/sitemap.xml
 
           set +x
