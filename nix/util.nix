@@ -155,4 +155,15 @@
 
     # 3. Concatenate them
   in pkgs.lib.concatStringsSep " " parts;
+
+  getSchemaType = extra_meta: if extra_meta.type == "blogPost" then {
+    "itemtype" = "https://schema.org/BlogPosting";
+    "bodyprop" = "articleBody";
+  } else if (extra_meta.type == "webPage" || extra_meta.type == "aboutPage") then {
+    "itemtype" = if extra_meta.type == "aboutPage" then "https://schema.org/AboutPage" else "https://schema.org/WebPage";
+    "bodyprop" = "mainContentOfPage";
+  } else if extra_meta.type == "userReview" then {
+    "itemtype" = "https://schema.org/UserReview";
+    "bodyprop" = "reviewBody";
+  } else throw "unknown type: ${extra_meta.type}";
 }

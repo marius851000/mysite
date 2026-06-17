@@ -95,26 +95,26 @@ rec {
     body_patched = patchBody "${folder}/body.html" path folder;
     wrapped_in_article = bodyWrapper data body_patched path;
     wrapped_in_header = wrapMain data wrapped_in_article path;
-  in {
-    inherit key data lang;
+  in pkgs.stdenv.mkDerivation {
+    name = "site-blog-page";
 
-    date = data.date or "1970-01-01"; #TODO: do not actually put a date
-
-    page = pkgs.stdenv.mkDerivation {
-      name = "site-blog-page";
-
-      phases = "installPhase";
-
-      installPhase = ''
-        mkdir -p $out
-        ln -s ${folder}/* $out
-        rm -f $out/body.html
-        rm -f $out/meta.toml
-        rm -f $out/index.html
-        ln -s ${wrapped_in_header} $out/index.html
-      '';
-
-      postname = "";
+    passthru = {
+      inherit key data lang;
+      schemaType = util.getSchemaType data;
+      datePublished = data.date or "1970-01-01"; #TODO: do not actually put a date
     };
+
+    phases = "installPhase";
+
+    installPhase = ''
+      mkdir -p $out
+      ln -s ${folder}/* $out
+      rm -f $out/body.html
+      rm -f $out/meta.toml
+      rm -f $out/index.html
+      ln -s ${wrapped_in_header} $out/index.html
+    '';
+
+    postname = "";
   };
 }

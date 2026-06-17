@@ -11,16 +11,7 @@ rec {
     post_title_stuff = (util.createCreativeWorkShortMeta extra_meta) +
       (if extra_meta.type == "userReview" then (util.formatWorkFromData extra_meta "reviewed" lang "itemReviewed") else "");
 
-    basic_content = if extra_meta.type == "blogPost" then {
-      "itemtype" = "https://schema.org/BlogPosting";
-      "bodyprop" = "articleBody";
-    } else if (extra_meta.type == "webPage" || extra_meta.type == "aboutPage") then {
-      "itemtype" = if extra_meta.type == "aboutPage" then "https://schema.org/AboutPage" else "https://schema.org/WebPage";
-      "bodyprop" = "mainContentOfPage";
-    } else if extra_meta.type == "userReview" then {
-      "itemtype" = "https://schema.org/UserReview";
-      "bodyprop" = "reviewBody";
-    } else throw "unknown type: ${extra_meta.type}";
+    basic_content = util.getSchemaType extra_meta;
   in pkgs.stdenvNoCC.mkDerivation {
     name = "wrapped-article";
 
@@ -47,13 +38,14 @@ rec {
 
   buildBlogIndex = blogTitle: blogPosts: path:
     let
-      sortedBlogPosts = pkgs.lib.reverseList (pkgs.lib.sortOn (b: b.date) (pkgs.lib.mapAttrsToList (key: content: content) blogPosts));
+      sortedBlogPosts = pkgs.lib.reverseList (pkgs.lib.sortOn (b: b.datePublished) (pkgs.lib.mapAttrsToList (key: content: content) blogPosts));
 
+      # NOTE: a blogPost should only be of type BlogPosting. But not all the entry in my blog are. So I deliberately not follow this rule. Should I suggest an evolution in the schema for it to point to CreativeWork instead?
       instructionsList = pkgs.lib.map
       (content: ''
         echo "<li>
-          <span itemscope itemprop=\"blogPost\" itemtype=\"https://schema.org/BlogPosting\" itemid=\"${util.urlFromPath (path + "/" + content.key)}\">
-            <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.date} ${content.lang}: <span itemprop=\"headline\">${content.data.titleFormatted or content.data.title}</span></a>
+          <span itemscope itemprop=\"blogPost\" itemtype=\"${content.schemaType.itemtype}\" itemid=\"${util.urlFromPath (path + "/" + content.key)}\">
+            <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.datePublished} ${content.lang}: <span itemprop=\"headline\">${content.data.titleFormatted or content.data.title}</span></a>
           </span>
         </li>" >> $out
       '') sortedBlogPosts;
@@ -83,7 +75,7 @@ rec {
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;
 
-    data = pkgs.lib.mapAttrs (key: type: buildArticlePage
+    articles = pkgs.lib.mapAttrs (key: type: buildArticlePage
       { type = "blogPost"; }
       (builtins.path {
         path = folder + ("/" + key);
@@ -95,7 +87,7 @@ rec {
     ) subfolder;
 
     instructionsList = pkgs.lib.mapAttrsToList
-      (key: content: "ln -s ${content.page} $out/${key}") data;
+      (key: content: "ln -s ${content} $out/${key}") articles;
 
     instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
   in
@@ -104,12 +96,16 @@ rec {
 
       phases = "installPhase";
 
+      passthru = {
+        inherit articles;
+      };
+
       installPhase = ''
         mkdir $out
 
         ${instructions}
 
-        ln -s ${buildBlogIndex title data path} $out/index.html
+        ln -s ${buildBlogIndex title articles path} $out/index.html
       '';
 
       postname = "";

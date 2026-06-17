@@ -1,11 +1,15 @@
 { buildArticlePage, buildBlog, ... }:
 
-{
-  "" = (buildArticlePage {} ./pages/index "/" null).page;
+let
+  personalBlog = buildBlog "Blog de marius" ./blog;
+
+  reviewBlog = buildBlog "Critiques de marius" ./review;
+in {
+  "" = (buildArticlePage {} ./pages/index "/" null);
 
   "style.css" = ./style.css;
 
-  blog = buildBlog "Blog de marius" ./blog;
+  blog = personalBlog;
 
-  review = buildBlog "Critiques de marius" ./review;
+  review = reviewBlog;
 }
