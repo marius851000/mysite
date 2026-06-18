@@ -3,6 +3,37 @@
   siteroot = "https://mariusdavid.fr";
   urlFromPath = path: "${siteroot}${path}/";
 
+  # Questionable. Try to mutualise a bit more.
+  buildJustHtmlPage = extra_meta: content: path: pkgs.stdenvNoCC.mkDerivation {
+    name = "just-html-page";
+
+    phases = [ "installPhase" ];
+
+    installPhase = ''
+      mkdir -p $out
+      ln -s ${content} $out/index.html
+    '';
+
+    passthru = {
+      inherit path;
+      data = extra_meta;
+    };
+  };
+
+  buildStaticFile = content: path: pkgs.stdenvNoCC.mkDerivation {
+    name = "static-file";
+
+    phases = [ "installPhase" ];
+
+    installPhase = ''
+      ln -s ${content} $out
+    '';
+
+    passthru = {
+      inherit path;
+    };
+  };
+
   createCreativeWorkShortMeta = extra_meta: let
     lang = extra_meta.lang;
 

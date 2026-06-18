@@ -45,7 +45,7 @@ rec {
       (content: ''
         echo "<li>
           <span itemscope itemprop=\"blogPost\" itemtype=\"${content.schemaType.itemtype}\" itemid=\"${util.urlFromPath (path + "/" + content.key)}\">
-            <a href=\"${path}/${content.key}\" itemprop=\"url\">${content.datePublished} ${content.lang}: <span itemprop=\"headline\">${content.data.titleFormatted or content.data.title}</span></a>
+            <a href=\"/${content.path}\" itemprop=\"url\">${content.datePublished} ${content.lang}: <span itemprop=\"headline\">${content.data.titleFormatted or content.data.title}</span></a>
           </span>
         </li>" >> $out
       '') sortedBlogPosts;
@@ -67,10 +67,12 @@ rec {
           echo "</div>" >> $out
         '';
       };
-    in
-      generic_pagegen.buildPage {
+
+      extra_meta = {
         title = blogTitle;
-      } body path null;
+      };
+    in
+      util.buildJustHtmlPage extra_meta (generic_pagegen.buildPage extra_meta body path null) path;
 
   buildBlog = title: folder: path: let
     subfolder = builtins.readDir folder;
@@ -97,15 +99,13 @@ rec {
       phases = "installPhase";
 
       passthru = {
-        inherit articles;
+        inherit articles path;
       };
 
       installPhase = ''
         mkdir $out
 
         ${instructions}
-
-        ln -s ${buildBlogIndex title articles path} $out/index.html
       '';
 
       postname = "";

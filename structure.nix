@@ -1,15 +1,18 @@
-{ buildArticlePage, buildBlog, ... }:
+{ buildArticlePage, buildBlog, buildBlogIndex, buildStaticFile, ... }:
 
 let
-  personalBlog = buildBlog "Blog de marius" ./blog;
+  personalBlog = buildBlog "Blog de marius" ./blog "blog";
 
-  reviewBlog = buildBlog "Critiques de marius" ./review;
-in {
-  "" = (buildArticlePage {} ./pages/index "/" null);
+  reviewBlog = buildBlog "Critiques de marius" ./review "review";
 
-  "style.css" = ./style.css;
+  articles = personalBlog.articles // reviewBlog.articles;
 
-  blog = personalBlog;
+  blogMainPage = buildBlogIndex "Blog de marius" articles "blog";
+in [
+  (buildArticlePage {} ./pages/index "" null)
+  (buildStaticFile ./style.css "style.css")
 
-  review = reviewBlog;
-}
+  blogMainPage
+  personalBlog
+  reviewBlog
+]

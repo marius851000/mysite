@@ -72,6 +72,7 @@ rec {
       '';
     };
 
+  #TODO: is that key even used?
   buildGenericPage = bodyWrapper: metadata: folder: path: key: let
     data_base = {
       type = "webPage";
@@ -99,7 +100,7 @@ rec {
     name = "site-blog-page";
 
     passthru = {
-      inherit key data lang;
+      inherit key data lang path;
       schemaType = util.getSchemaType data;
       datePublished = data.date or "1970-01-01"; #TODO: do not actually put a date
     };

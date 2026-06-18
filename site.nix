@@ -12,52 +12,35 @@ let
   #path should not end with a slash
   buildSectionFromStructure = structure: path:
     let
-      instructionsList = (pkgs.lib.mapAttrsToList
-        (key: content: let
-        info = if (pkgs.lib.isFunction content) then
-          let
-            pageder = content (path + "/" + key);
-          in
-          {
-            input = pageder;
-            output = "$out/${key + pageder.postname}";
-          }
-        else if (pkgs.lib.isDerivation content) then
+      instructionsList = (pkgs.lib.map
+        (content: let
+        info = if (pkgs.lib.isDerivation content) then
           {
             input = content;
-            output = "$out/${key + content.postname}";
-          }
-        else if (builtins.isPath content) then
-          {
-            input = content;
-            output = "$out/${key}";
+            output = "$out/${content.path}";
           }
         else
-          {
-            input = (buildSectionFromStructure content (path + "/" + key));
-            output = "$out/${key}";
-          };
-      in if (key == "") then
-          "cp -r ${info.input}/* $out/"
-        else
-          "ln -s ${info.input} ${info.output}"
-        ))
+          throw "unsupported content type in site structure, expected a function: ${builtins.toString content}";
+        in info)
+      )
+      structure;
 
-        structure;
-
-      instructions = pkgs.lib.concatStringsSep "\n" instructionsList;
+      instructions = builtins.toJSON instructionsList;
     in
       pkgs.stdenv.mkDerivation {
         name = "site-a-structure";
 
         phases = "installPhase";
 
-        nativeBuildInputs = [ pkgs.python3 ];
+        nativeBuildInputs = [ pkgs.python3 pkgs.rsync ];
 
         installPhase = ''
           set -x
           mkdir -p $out
-          ${instructions}
+          echo ${pkgs.lib.escapeShellArg instructions} > instructions.json
+          substituteInPlace instructions.json --replace "\$out" "$out"
+          cat instructions.json
+          ${pkgs.python3}/bin/python3 ${./process_result.py} instructions.json
 
           export SITEMAP_GIT_ROOT="$PWD"
 
@@ -68,6 +51,12 @@ let
       };
 
 
-  structure = import ./structure.nix { inherit buildPage; buildArticlePage = blog.buildArticlePage; buildBlog = blog.buildBlog; };
+  structure = import ./structure.nix {
+    inherit buildPage;
+    buildBlogIndex = blog.buildBlogIndex;
+    buildArticlePage = blog.buildArticlePage;
+    buildBlog = blog.buildBlog;
+    buildStaticFile = util.buildStaticFile;
+  };
 in
   buildSectionFromStructure structure ""
