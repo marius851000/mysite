@@ -1,0 +1,100 @@
+<p>During the <cite>Mystery Mail 6</cite> event, an <cite>Pokémon Mystery Dungeon: Explorers of Sky</cite> <a href="https://en.wikipedia.org/wiki/Exquisite_corpse">exquisite corpse</a> event, there has been a kind of ARG/CTF (that I will call puzzle) being run in parallel.</p>
+
+<p>In this document, I describe my approach to it, mostly chronologically, and also my opinion. Note that it is fairly shallow, and does not go into the numerous details.</p>
+
+<h2>My timeline</h2>
+
+<p>I did not knew whether there would be puzzle, thought I extrapolated this as likely, given there was already one during <cite>Mystery Mail 5</cite>, but that was unconfirmed. Given the previous event required to access the ROM from your participation, I waited for my turn. Given I also went to vacation just after that, I decided to wait until the end of my vacation.</p>
+
+<p>After I had completed my turn, some remark made me notice that I should have taken some more attention to <cite>DECOY</cite>’s (a <cite>Discord</cite> bot used for the organisation of the event) commands, more particularly the <code>/query</code> one. Turns out, you didn’t needed access to the ROM at all. Good thing I had figured that early enough, so I could work on that during my downtime. Also, good thing I also brought my laptop in case I needed to fix my servers (I never needed to).</p>
+
+<p>So, during travel, I did some initial exploration on my phone. You can <code>/query &lt;something&gt;</code> and it would answer with some text (using a placeholder for unrecognized value). Notable finds include “mistake”, “mitm” and “Very Important Paperwork". And that it work by perfect match, not just keyword detection, reducing brute‑force opportunities.</p>
+
+<p>The next day, with access to the computer, I was able to easily solve the “FOREMOST MISTAKE” problem, just a file that needed to be opened as UTF‑8, discovering the “normal life” queryable code. I also started looking at the “mitm” stuff, which returned a YARA rule.</p>
+
+<p>Said Yara rules contained a rule that would match on a secret. Eventually managed to decode it (Yara endianess is... a bit unusual). It provided a code that brought me nowhere. So I went to focus on the two other problems, the one about the timestamp (from “normal life”) and the death cause from “Very Important Paperwork”.</p>
+
+
+<p>Querying “Very Important Paperwork” lent a message that asked about the death cause of someone who died from “spontaneous combustion” from a previous event. Initially suspecting Sunkern (who died by fire), I eventually manage to locate it was “Voltorb” (requiring me to re‑watch some of the MM5. Which is not something that was obvious at all when I started it). I eventually managed to locate the creature, the scene, and the cause, some fancy pseudo python error logged in the debug console in a scene from <cite>Irdkwia</cite> (that I do remember I had noticed during my MM5 exploration, thought I hadn’t brought much attention to it at the time, not being what I was looking for, and quickly forgetting it).</p>
+
+<p>This “Continuity Error” provided me (via querying) with a <code>.pyc</code> file. A quick <code>file</code> analysis showed it had a weird timestamp, which, combined with “normal life” format tip, allowed me to get “FORLORN MEMORY”.</p>
+
+<p>I continued on that <code>.pyc</code> file. After some manual disassembly, and testing some CLI disassembly tool with limited success (with issue downloading them due to painfully slow internet from the camping), I decided to use <a href="https://pylingual.io/"><cite>PyLingual</cite></a>, which did provide a good and complete decompilation. Turns out, that script took the yara rule as input, as well as its answer, but it also seem to accept some SSB file. At this point, I turned my attention to “FORLORN MEMORY”.</p>
+
+<p>First was figuring what type of file this was. I originally thought from the Shift-JIS encoded strings I saw, that it was a cutscene encoded as DS bytecodes, but turns out it was a <code>SSB</code> script. A Japanese SSB script, given the use of Shift-JIS.</p>
+
+<p>After some more text extraction, I find some <code>NDS7z</code>... code, that suspiciously group <code>NDS</code> (<cite>Nintendo DS</cite>) and <code>7z</code> (<cite>7‑zip</cite>). I also managed to decompile it, despite doing out‑of‑bound call, by patching the file, reordering elements, and patching the offset. That allowed me to play the ROM without relying on a JP rom, allowing me to locate some more lore. It also included some hidden message (that I don’t recall) that can be accessed via analysing said code (the <code>Call</code> opcode and how they relate to some <code>se_PlayVolume</code>)</p>
+
+<p>About the “Continuity Error”, some tip led me to figure that, unlike what I previously thought (and spent some time trying), the code wasn’t in any existing project. I had to modify <cite>Irdkwia</cite>’s scene. Once I knew that, it was pretty straightforward.</p>
+
+<h3>The Special Process</h3>
+
+<p>That let to me “Forbidden Process”. I had to first decrypt the 7z file. Needless to say, I already had the password from the “mitm” puzzle. A <code>README</code> file made its nature obvious: it was a Special Process (code that run inside the game). It also said I needed two answer, to get both the client and the server.</p>
+
+<p>First was figuring out how to run it. Calling it the usual special process way failed. Ghidra analysis show that it actually decrypt the payload using the two SP parameter. I figured the first argument was an integer, but I somehow forgot about the second parameter. Adex (the main organizer of this puzzle) tipped me about that, and I soon figured it was a String. It reused the argument used to generate the Continuity Error message from the previous puzzle.</p>
+
+<p>There was a second phase that asked to enter some text. Once again, I did some analysis. I had an hard time figuring what the algorithm tried to achieve, but I finally figured it was navigating a list of bytes, the good answer having to check a number of condition at the end. Given the scanning happened character-by-character, I opted to reimplement it that select the first valid next character. That netted me the first half.</p>
+
+<p>For the second part, I thought about it being another valid key generated in the same way, with not taking necessarily the next character. So I modified my implementation to support backtracking and perform an exhaustive search (which was very efficient with backtracking). I found no other answer. Turns out (thank to tip) this is patch that work both on US and JP rom! So I finally decided to patch me a JP rom, and then I tried figuring out how it would change the algorithm (I don’t remember exactly if the byte pattern changed, but it definitly changed the text due to different code point meaning). Someone offered me to offer the mapping, which I happily accepted. After that, it was a quick stuff to solve.</p>
+
+
+<h3>The client/server</h3>
+
+<p>This netted me two binary. A program with multiple executable accessible, that could be run on a variety of platform (including x86-64 linux, my choice) and an XDelta patch.</p>
+
+<p>Not finding any obvious rom on which to apply the patch (which seemed to patch some first overlay, some file used to load code at run-time in the game), I decided to focus on the server. How pleasant was it to have an un-obfuscated file for once. As pleasant as <a href="/blog/hacknslashpuzzle">the Hack'n'Slash obfuscation function</a>. I quickly figured it lauched 3 different server, a DNS, an HTTP server, and a raw TCP server. I focused on the TCP server. Labelled some function, and then decided to write my own client (I’ll mind about the client XDelta later).</p>
+
+<p>I eventually also returned attention to the XDelta. I’ve been told that this is supposed to be applied directly on an the overlay file (as opposed to what I tought of it being supposed to be applied on the ROM that contain the overlay among all its data). Turns out... I reused some stuff from MM5. I wasn’t willing to return understanding all of that stuff, so I just put it aside, and returned instead reverse-engineering the server based on the client.</p>
+
+<p>The server use an unsecure key exchange mechanism. Both the client and the server communication is encrypted with an RC4 (DROP1024 variant, which just mean it drop the first 1024 first bytes to avoid some vulnerability). The main part of the handshake is that the client send its key to the server, the server sent its own key to the client, encrypting this message with the client, so both the client and the server know each others key. The vulnerability reside in the original client key not being encrypted whatsoever (when there exist method that can actually be used to prevent this). The handshake also does a bit more extra needless stuff for fun. And send some constant from the server to the client which appear innocent, but turns out to be important later.</p>
+
+<p>I think it is at that point I focused more on the client. I eventually manage to piece things together to access the interface, and open it to Ghidra. It needed to communicate from the emulator (MelonDS) to the server running on the same computer. I managed to eventually get that working by binding the server on an external IP of my computer (the LAN IP, as opposed to the loop-back IP). From there, it opened a menu, showing some menu and an option to enter a username and password combo.</p>
+
+<p>At this point, I focused on working on my own client rewrite. I located 3 general option the API can send. I implement the "1" one, which load file. Nothing fancy. Client send the file name to the server, server hash it, return the matching entry, and client decrypt it using the file name as a key. That mean you need to know the file to read the file. Nothing too fancy here.</p>
+
+<p>I also implemented the endpoint "2". This just look up some 2-depth array. With a special case that return some data allocated and decrypted by endpoint "3". I decided I would just not handle this special case for now. The client then decrypt the data with what I later discovered was the authentification string (combining the username and the password, as entered by the user, in the form of <code>username@decoi.pmd&password</code>). The data here are the strings that appears in the menu, but also the mail message contained on the server. The menu used a default key, from some UI string.</p>
+
+<p>At this point, I needed to log into one user. When querying “Webster” (a name present in the Yara puzzle), you had some JSON data, containing both a DS user data, but also some <code>"mimen"</code> data. Namely, a username and an md5 password. Turns out some online rainbow table was able to figure the password was just "pass". With that, I could easily log-in.</p>
+
+<p>I then looked at implementing said log-in endpoint in my client. It turns out there is some exchange (after first sending the raw connection string to the server) and some complex stuff going on, but I eventually figured that all I had to do was run the request the server as a math arithmetic instruction (as implemented in game). The obscure constant data sent during handshake is used here. It is used to obfuscate how the handshake happen, just redirecting to some EoS game code (it is raw ARM code). I eventually implemented that in my client, and was able to log-in and access Webster’s message from my client.</p>
+
+<p>Next, I needed to log‑in into the next account (there is 3 in total). It was Sunkern’s account. A mail tipped about the format of username, which happen to be in the form of “&lt;Username&gt;&lt;Color&gt;&lt;4 number date of birth&gt;”. I opted to go with a bruteforce approach. Given that the username validation did not made use of the handshake (as opposed to password validation), that was fairly easy to implement (some Rc4 and MD5 was enough). I also extracted a list of color name across many language from Wikidata. I eventually located the username "sUNKernRed0714". I also needed a password. Some analysis of the server had led me the a 9‑character “polygram”, in this case, “facetious”. A mail in Webster’s mailbox indicated the offset of each of the password character in this polygram (the password was “tsaefssa”).</p>
+
+<p>This netted me access to the mail server, that I accessed via my custom client. One mail among them mentioned the file name "sus.pcap", that I was able to read quickly from my custom client.</p>
+
+<p>Said pcap file was a client‑server communication using the same protocol as described before. Implementing a way to read that was pretty straightforward (I left the TCP stream re-combination to some AI code). Eventually, using said vulnerability described earlier, I was able to locate both the client and server key, and decrypt stuff up to the server sending the password/username to the client. The authentification string was “なんでもできない@decoi.pmd&itsgiftto”. Note the U.S. PMD does not support entering such text (it is encoded as SHIFT-JIS, used by JP). Nevertheless, not a problem for my custom client. That did triggered the "decrypt stuff on server" part, that being said, so I had to handle that. That netted me a file that looked like it contain some ARM code (it overwrote a string from the client menu first time it is read).</p>
+
+<p>Eventually, seeing nothing that would advance me in the mail, and seeing the ARM code, I decided to connect via the in-game client. Given I couldn’t type the text, I used GDB to instead patch the memory area where it is stored. That allowed me to view the final secret, and the final secret to complete this puzzle.</p>
+
+<h3>Bonus</h3>
+
+<p>The final ROM include a namecheck, where you can enter text and it provide some answer. The names are hashed with a salt + password hashed in md5. I made a script to extract these, then used <cite>hashcat</cite> to bruteforce it. I managed to found a number of hashes, including the one that make your game crash. It is still cracking the 10‑letter password right as I write those line.</p>
+
+<p>Said namecheck script appear to not be easily decodable, but embed some ASCII string of what I assume to be some ARM bytecode. Didn’t digged further.</p>
+
+<h3>Links</h3>
+
+<p>The repo (with little care about lisiblity) is <a href="https://github.com/marius851000/mm6secret">published on GitHub</a>.</p>
+
+<p>Of notable attention:</p>
+
+<ul>
+    <li><a href="https://github.com/marius851000/mm6secret/blob/master/forbiddenprocess/parsed.exps">The Forbidden Process script</a></li>
+    <li><a href="https://github.com/marius851000/mm6secret/blob/master/forbiddenprocess/backtracking.py">The Forbidden Process (needless) backtracking search</a></li>
+    <li><a href="https://github.com/marius851000/mm6secret/blob/master/timestamp/out.txt">The (complete) timestamp decompiled script</a></li>
+    <li><a href="https://github.com/marius851000/mm6secret/tree/master/server/mimen_client">The mimen client, also including the name bruteforcer and the pcap analyser</a></li>
+</ul>
+
+<h2>My opinion</h2>
+
+<p>While I did not find the difficulty prohibitive, and even pleasantly challenging, I find it is also too long. It is a bit hard to give an exact number, but I’d say it’ll be better if it was half the size. The main issue is that I didn’t expected such length, and grew tired. I also had to ask for a time extension (because I’d rather not spend all my free time on a single thing). Maybe it would have worked better with a team? But I think I remember Adex said it wasn’t targetted toward this, and it sadly wasn’t an option for me (due to having no one to partner with). MM5 was... not as long.</p>
+
+<p>I also did not really like the... relation it had with previous MM5 puzzle. Finding the exact reason is... a bit hard, but I’d argue the main one is that it greatly increase the search scope. And that I barely remembered anything (luckily, I did have notes. Lenghty ones. I’d rather just focus on less data to think about about). The fact I had some issue with beginning (and finishing) it too late without having been made aware of it until I solved it may have contributed a bit to it too.</p>
+
+<p>Also, fun fact, but I absolutly forgot about the DECOI lore when I made my scene. Would have I brought a minimum of attention, I would have at least swapped the priority. It turned out fine, in the end. (also, I had absolutly forgot I already made a patch about nicely making "shadow" sprite that I had actually already use in some past Mystery Mail).</p>
+
+<h2>Conclusion</h2>
+
+<p>Adex shared to me Flare‑On. It looks an interesting set of reverse‑engineering puzzle (also time limited). I think I’ll participate. On a relaxed pace, with no intention to finish. Looks fun.</p>
+
+<p>Beside that... Have a nice day!</p>
