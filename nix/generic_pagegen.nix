@@ -40,9 +40,6 @@ rec {
 
       cat ${../footer.html} >> result.html
 
-      substituteInPlace result.html \
-        --replace-quiet "<img src=\"./" "<img src=\"${path}/"
-
       prettier --parser html result.html > $out
     '';
 
